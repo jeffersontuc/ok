@@ -1,12 +1,15 @@
 import collections
 import csv
 import datetime as dt
+import sys
+import requests
 from functools import wraps
 from io import StringIO
 
 from flask import (Blueprint, render_template, flash, redirect, Response,
                    url_for, abort, request, stream_with_context)
 from werkzeug.exceptions import BadRequest
+
 
 from flask_login import current_user, login_required
 import pygal
@@ -403,11 +406,20 @@ def course_assignments(cid):
                            courses=courses, current_course=current_course,
                            active_asgns=active_asgns, due_assgns=due_asgns)
 
+@admin.route('/refazer')
+def get_refazer():
+    return requests.get('http://refazer-online.azurewebsites.net/api/ping').content
+
+
 
 @admin.route("/course/<int:cid>/assignments/new", methods=["GET", "POST"])
 @is_staff(course_arg='cid')
 def new_assignment(cid):
     courses, current_course = get_courses(cid)
+    sys.stdout = open('output.logs', 'w')
+    print(get_refazer())  # Nothing appears bellow
+    sys.stdout = sys.__stdout__  # Reset to the standard output
+    open('output.logs', 'r').read()
     if not Assignment.can(None, current_user, 'create'):
         flash('Insufficient permissions', 'error')
         return abort(401)
