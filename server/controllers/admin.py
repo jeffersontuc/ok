@@ -1,5 +1,6 @@
 import collections
 import csv
+import json
 import datetime as dt
 import sys
 import requests
@@ -406,9 +407,12 @@ def course_assignments(cid):
                            courses=courses, current_course=current_course,
                            active_asgns=active_asgns, due_assgns=due_asgns)
 
-@admin.route('/refazer')
-def get_refazer():
-    return requests.get('http://refazer-online.azurewebsites.net/api/ping').content
+def createRefazerAssignment(aid, aname):
+    url = 'http://refazer-online.azurewebsites.net/api/assignments'
+    data =  {"OkId": aid, "Name": aname}
+    headers = {'Content-Type': 'application/json'}
+
+    return requests.post(url, data=json.dumps(data), headers=headers).content
 
 
 
@@ -416,10 +420,9 @@ def get_refazer():
 @is_staff(course_arg='cid')
 def new_assignment(cid):
     courses, current_course = get_courses(cid)
-    sys.stdout = open('output.logs', 'w')
-    print(get_refazer())  # Nothing appears bellow
-    sys.stdout = sys.__stdout__  # Reset to the standard output
-    open('output.logs', 'r').read()
+
+    #sys.stdout = sys.__stdout__  # Reset to the standard output
+
     if not Assignment.can(None, current_user, 'create'):
         flash('Insufficient permissions', 'error')
         return abort(401)
@@ -430,6 +433,7 @@ def new_assignment(cid):
         form.populate_obj(model)
         db.session.add(model)
         db.session.commit()
+        createRefazerAssignment(model.id, model.name)
         cache.delete_memoized(Assignment.name_to_assign_info)
 
         flash("Assignment created successfully.", "success")
